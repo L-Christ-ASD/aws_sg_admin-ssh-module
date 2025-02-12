@@ -4,13 +4,13 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# terraform {
-#   backend "s3" {
-#     bucket = "mon-bucket-demo-one"
-#     key    = "terraform.tfstate"
-#     region = "us-east-1"
-#   }
-# }
+terraform {
+  backend "s3" {
+    bucket = "mon-bucket-demo-one"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+  }
+}
 
 variable "ec2_type" {
   description = "le type d'instance souhaité"
