@@ -1,16 +1,7 @@
-provider "dns" {}
-
 provider "aws" {
-  region = "us-east-1"
+    region = "us-east-1"
 }
 
-terraform {
-  backend "s3" {
-    bucket = "mon-bucket-demo-one"
-    key    = "terraform.tfstate"
-    region = "us-east-1"
-  }
-}
 
 variable "ec2_type" {
   description = "le type d'instance souhaité"
@@ -18,92 +9,65 @@ variable "ec2_type" {
   default     = "t3.micro"
 }
 
-variable "ec2_distribution" {
-  description = "distribution par defaut"
-  type        = string
-  default  = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-*"
+variable "counterInstance" {
+    description = "Nombre d'instance a creer"
+    #type = string
+    default = 1
 }
-
-variable "ec2_archi" {
-  description = "Architecture de l'instance (amd64 ou arm64)"
-  type        = string
-  default     = "x86_64"
-}
-
-# Recupération automatique de l'AMI
-data "aws_ami" "mylastestimage" {
-  #executable_users = ["self"]
-  most_recent = true
-  owners      = ["099720109477"] # ou "amazon"
-
-  filter {
-    name   = "name"
-    values = [var.ec2_distribution]
-  }
-
-  filter {
-    name   = "architecture"
-    values = [var.ec2_archi]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-output "ami_id" {
-  value = data.aws_ami.mylastestimage.id
-}
-output "ami_name" {
-  value = data.aws_ami.mylastestimage.name
-}
-
 
 resource "aws_instance" "terrafom" {
 
-  # ami                    = "ami-04b4f1a9cf54c11d0"
-  ami                    = data.aws_ami.mylastestimage.id
+  count = var.counterInstance # creation multiple des instances
+  ami                    = "ami-04b4f1a9cf54c11d0"
   instance_type          = var.ec2_type
   key_name               = "vockey"
   vpc_security_group_ids = ["sg-0c091d51cee0301ef"]
+  security_groups = [aws_security_group.admin_ssh.name]
 
   tags = {
-    Name = "inst_via_terraforme"
+    Name = "terrafom-${count.index}"
   }
 
 }
 
-resource "aws_s3_bucket" "bucket-terraf" {
-  bucket = "mon-bucket-demo-one"
+output "public_ip_vm0" {
+    value = aws_instance.terrafom[*].public_ip
+  
 }
+output "isntance_id" {
+    value = aws_instance.terrafom[*].id
+  
+}
+#_____________Creation de security group___________
+# =================================================
+resource "aws_security_group" "admin_ssh" {
+  name        = "admin-ssh"
+  #description = "groupe-de sécurité pour accès ssh"
+  vpc_id      = "vpc-03c855deae9233889"  
 
-resource "aws_s3_bucket_versioning" "versioning_example" {
-  bucket = aws_s3_bucket.bucket-terraf.id
-  versioning_configuration {
-    status = "Enabled"
+
+  tags = {
+    Name = "admin-ssh"
   }
 }
 
-# Exemple de recupération de data
-
-data "dns_a_record_set" "google" {
-  host = "google.com"
+variable "cidr_block" {
+  description = "Les adresser acceptéés"
+  type = string
+  default = "0.0.0.0/0"
 }
 
-output "google_addrs" {
-  value = join(",", data.dns_a_record_set.google.addrs)
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
+  security_group_id = aws_security_group.admin_ssh.id
+  cidr_ipv4         = var.cidr_block 
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
 }
 
-output "public_ip" {
-  value = aws_instance.terrafom.public_ip
+output "sg_name" {
+    value = aws_security_group.admin_ssh.name 
 }
-
-output "private_ip" {
-  value = aws_instance.terrafom.private_ip
+output "sg_id" {
+    value = aws_security_group.admin_ssh.id
 }
