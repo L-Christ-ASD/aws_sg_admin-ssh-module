@@ -51,18 +51,37 @@ resource "aws_security_group" "admin_ssh" {
   }
 }
 
-variable "cidr_block" {
-  description = "Les adresser acceptéés"
-  type = string
-  default = "0.0.0.0/0"
+variable "admin-ips" {
+  description = "les ip's des admins"
+  default = ["8.8.8.8", "1.1.1.1"]
 }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
+variable "mon_ip" {
+  description = "Les adresses acceptéés"
+  type = string
+  default = "0.0.0.0/32"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_in" {
   security_group_id = aws_security_group.admin_ssh.id
-  cidr_ipv4         = var.cidr_block 
+  cidr_ipv4         = "${var.mon_ip}/32"
   from_port         = 22
   ip_protocol       = "tcp"
   to_port           = 22
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_in" {
+  for_each = toset(var.admin-ips)
+  security_group_id = aws_security_group.admin_ssh.id
+  cidr_ipv4         = "${each.value}/32"
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_ssh_out" {
+  security_group_id = aws_security_group.admin_ssh.id
+  ip_protocol       = "-1" 
 }
 
 output "sg_name" {
