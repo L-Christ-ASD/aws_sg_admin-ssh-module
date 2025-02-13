@@ -4,3 +4,5 @@ output "sg_name" {
 output "sg_id" {
   value = aws_security_group.admin_ssh.id
 }
+
+#_____..
